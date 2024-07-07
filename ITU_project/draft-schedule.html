@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<!-- 
+    @author xvorob02
+-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Návrh rozvrhu</title>
+    <link rel="stylesheet" href="draft-schedule.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <section class="center-content">
+        <div id="app">
+            <side-bar/>
+        </div>
+    </section>
+
+    <script src="https://unpkg.com/vue@next"></script>
+    <script>
+        let app = Vue.createApp({
+        })
+        
+        
+        // side bar component
+        app.component('side-bar', {
+            template:`
+            <section class="left-bar">
+                <div class="user-info">
+                    <img class = "side-bar-img" src="images/pic1.jpg" alt="Profilová fotka">
+                    <h2>Andrea Starečková</h2>
+                </div>
+                <button class="custom_button">
+                    <img class = "button-img" src="images/user.png" alt="person" >
+                    <a href="student-details.php">Osobní informace</a>
+                </button>
+                <button class="custom_button" @click = "CreateTable">
+                    <img class = "button-img" src="images/calendar-pen.png" alt="calendar-pen" >
+                    Zobrazit aktivity
+                </button>    
+                <div class="settings">
+                    <subject
+                    v-for="(subject, i) in subjects"
+                    :key="i"
+                    v-bind:label="subject.label"
+                    v-model = "subject.checked"
+                    />
+                </div>
+                <button class="custom_button" @click="selectAll">
+                    <span>Vybrat vše</span>
+                </button>
+                              
+            </section>
+            <my_schedule v-bind:table = "table" v-bind:isVisible = "buttonVisible"/>
+            `,
+            components: ['subject', 'my_schedule'],
+            data() {
+                return {
+                    subjects: [],
+                    updated: false,
+                    buttonVisible: false,
+                    print_subjects: [],
+                    table: []
+                }
+            },
+            methods: {
+                // Called after click on 'Zobrazit aktivity' button to display table with activities
+                CreateTable() {
+                    let temp = [];
+                    // check which check was checked
+                    for (let i = 0; i < this.subjects.length; i++) {
+                        if(this.subjects[i].checked){
+                            temp.push(this.subjects[i].label)
+                        }
+                    }
+                    this.print_subjects = temp;
+                    this.fetchTable();
+                    this.buttonVisible = true;
+                },
+
+                // Function fetches data about activities what should to be displayed
+                fetchTable() {
+                    const postData = new URLSearchParams();
+                    postData.append('request', 'getTable');
+                    postData.append('subjects', JSON.stringify(this.print_subjects))
+
+                    fetch('be.php', {
+                        method: 'POST',
+                        body: postData,
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                    })
+                    .then((response) => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then((resp) => {
+                        if(resp.resCode == '0') {
+                            this.table = resp.data;
+                            console.log(this.table);
+                        } else {
+                            console.error('Error fetching user info');
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('Error fetching user info', error);
+                    });
+                },
+                // function gets registered classes associated with user
+                fetchUserInfo() {
+                    const postData = new URLSearchParams();
+                    postData.append('request', 'getClasses');
+
+                    fetch('be.php', {
+                        method: 'POST',
+                        body: postData,
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                    })
+                    .then((response) => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then((resp) => {
+                        if(resp.resCode == '0') {
+                            this.subjects = resp.data;
+                        } else {
+                            console.error('Error fetching user info');
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('Error fetching user info', error);
+                    });
+                },
+                selectAll() {
+                    let allChecked = true;
+                    for (let i = 0; i < this.subjects.length; i++) {
+                        if (!this.subjects[i].checked) {
+                            allChecked = false;
+                            break;
+                        }
+                    }
+                
+                    // Pokud jsou všechny vybrány, odznačíme je všechny
+                    if (allChecked) {
+                        for (let i = 0; i < this.subjects.length; i++) {
+                            this.subjects[i].checked = false;
+                        }
+                    } else {
+                        // Jinak všechny vybereme
+                        for (let i = 0; i < this.subjects.length; i++) {
+                            this.subjects[i].checked = true;
+                        }
+                    }
+                },                
+            },
+            mounted() {
+                this.fetchUserInfo();
+            },
+        })
+        
+        // side bar component
+        app.component('subject', {
+            template:`
+            <label>{{label}}</label>
+            <input 
+            type="checkbox" 
+            v-model="isChecked"
+            />
+            `,
+            props: ['label', 'modelValue'],
+            computed: {
+                isChecked: {
+                    // when value changed in parent class propaget to child
+                    get(){
+                        return this.modelValue
+                    },
+                    // when value changed in child propaged to parent class
+                    set(value){
+                        this.$emit('update:modelValue', value)
+                    }
+                }
+            }
+        })
+        
+        // side bar component
+        app.component('my_schedule', {
+            mounted() {
+                document.addEventListener('click', this.closeModalOutside);
+            },
+            beforeUnmount() {
+                document.removeEventListener('click', this.closeModalOutside);
+            },
+            template: `
+                <section class="right-side">
+                    <div v-for="(day, i) in table" :key="i" class="grid-schedule">
+                        <template v-for="(activities, j) in day" :key="j">
+                            <div v-for="(activity, k) in activities" :key="k" :class="activity.class">
+                                <template v-if="activity.subject">
+                                    <div class="activity-wrapper" style="position: relative;">
+                                        <div v-if="activity.subject" class="activity-content">
+                                            <button
+                                                v-if="activity.check"
+                                                class="settings-button"
+                                                @click="showActivityInfo(activity, $event, 'settings-' + i + '-' + j + '-' + k)"
+                                                ref="settingsButton"
+                                            >
+                                                <i class="fas fa-cog"></i>
+                                            </button>
+                                            <div>{{activity.subject}}</div>
+                                            <div v-if="activity.check" class="small">{{activity.room}} / {{activity.vyucujici}}</div>
+                                            <check v-if="activity.check" v-model="activity.checked" />
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                    <div v-if="showModal" class="modal" :style="modalStyle" @click.stop="">
+                        <div class="modal-content">
+                            <h2>{{ modalActivity.subject }}</h2>
+                            <p>Místo konání: {{ modalActivity.room }}</p>
+                            <button @click="details">Details</button>
+                        </div>
+                    </div>
+                    <div class="schedule-button" @click="StoreActivities" v-if="isVisible">
+                        {{saveButton}}
+                    </div>
+                </section>
+            `,
+            props: ['table', 'isVisible'],
+            components: ['check'],
+            data() {
+                return {
+                    saveButton: "Uložit",
+                    showModal: false,
+                    modalActivity: null,
+                    clicked_activity: '',
+                    modalStyle: {
+                        top: '0',
+                        left: '0',
+                        position: 'absolute',
+                        backgroundColor: '#FFE382',
+                        border: '1px solid black',
+                        padding: '10px'
+                    }
+                };
+            },
+            methods: {
+                // modal window functions
+                showActivityInfo(activity, event, buttonId) {
+                    this.modalActivity = activity;
+                    this.calculateModalPosition(event);
+                    this.clicked_activity = activity.subject
+                    this.showModal = true;
+              
+                      this.$nextTick(() => {
+                        const button = event.target.closest('.settings-button');
+                        if (button) {
+                            button.setAttribute('data-button-id', buttonId);
+                        }
+                    });
+                },
+                details() {
+                    window.location.href = `class-details.html?zkratka=${this.clicked_activity}`;
+                },
+                calculateModalPosition(event) {
+                    const buttonRect = event.target.getBoundingClientRect();
+                    this.modalStyle = {
+                        ...this.modalStyle,
+                        top: `${buttonRect.bottom}px`,
+                        left: `${buttonRect.left}px`
+                    };
+                },
+                hideModal() {
+                    this.showModal = false;
+                    this.modalActivity = null;
+                },
+                closeModalOutside(event) {
+                    const modal = document.querySelector('.modal');
+                    if (modal) {
+                        const isClickInsideModal = modal.contains(event.target);
+                        const isClickOnSettingsButton = event.target.closest('.settings-button[data-button-id]');
+                        if (!isClickInsideModal && !isClickOnSettingsButton) {
+                            this.hideModal();
+                        }
+                    }
+                },            
+                // function controls user click on same activity but different time.
+                // if this situation occurs the origin subject which was checked is unchecked
+                CheckChecked(){
+                    // indexies of element what was changed (user clicked on check)
+                    let indexDay = -1;
+                    let indexRow = -1;
+                    let indexHour = -1;
+                    // get indexies of this element
+                    // Day
+                    for (let x = 0; x < this.table.length; x++) {
+                        // Hour
+                        for (let y = 0; y < this.table[x].length; y++) {
+                            // Row
+                            for (let z = 0; z < this.table[x][y].length; z++) {
+                                if(this.table[x][y][z].check){
+                                    if(this.table[x][y][z].lastModified && this.table[x][y][z].checked){
+                                        indexDay = x;
+                                        indexRow = y;
+                                        indexHour = z;
+                                        this.table[x][y][z].lastModified = false;
+                                    }
+                                    if(!this.table[x][y][z].checked){
+                                        this.table[x][y][z].lastModified = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // element not found (update occurs after click on 'Zobrazit aktivity')
+                    if(indexRow == -1) return;
+                    // start to search one element after modified element
+                    x = indexDay;
+                    y = indexRow;
+                    z = indexHour + 1;
+                    // Day
+                    while(true){
+                        x = x % this.table.length;
+                        // Row
+                        while(true){
+                            // Hour
+                            while(true){
+                                // end of searching
+                                // algoritm reached started element
+                                if(x == indexDay && y == indexRow && z == indexHour) return;
+                                // reached end of row
+                                if(z >= this.table[x][y].length) break;
+                                // activity of same element found 
+                                if( this.table[x][y][z].subject.localeCompare(this.table[indexDay][indexRow][indexHour].subject)==0
+                                    &&this.table[x][y][z].class.localeCompare(this.table[indexDay][indexRow][indexHour].class)==0
+                                    &&this.table[x][y][z].checked)
+                                {
+                                    this.table[x][y][z].checked = false;
+                                }
+                                z++;
+                            }
+                            z=1;
+                            y++;
+                            if(y >= this.table[x].length) break;
+                        }
+                        y=0;
+                        x++;
+                    }
+                },
+                DelOldAct(){
+                    const postData = new URLSearchParams();
+                    postData.append('request', 'deleteOldActivities');
+
+                    fetch('be.php', {
+                        method: 'POST',
+                        body: postData,
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                    })
+                    .then((response) => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then((resp) => {
+                        if(resp.resCode == '0') {
+                        } else {
+                            console.error('Error fetching user info');
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('Error fetching user info', error);
+                    });
+                },
+                RegNewAct(){
+                    let act = [];
+
+                    for (let x = 0; x < this.table.length; x++) {
+                        // Hour
+                        for (let y = 0; y < this.table[x].length; y++) {
+                            // Row
+                            for (let z = 0; z < this.table[x][y].length; z++) {
+                                if(this.table[x][y][z].check){
+                                    if(this.table[x][y][z].checked){
+                                        this.table[x][y][z].checked = false;
+                                        act.push(this.table[x][y][z].id);
+                                        this.table[x][y][z].checked = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if(act.length > 0){
+                        const postData = new URLSearchParams();
+                        postData.append('request', 'registerNewActivities');
+                        postData.append('aktivities', JSON.stringify(act));
+
+                        fetch('be.php', {
+                            method: 'POST',
+                            body: postData,
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                        })
+                        .then((response) => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok');
+                            }
+                            return response.json();
+                        })
+                        .then((resp) => {
+                            if(resp.resCode == '0') {
+                            } else {
+                                console.error('Error fetching user info');
+                            }
+                        })
+                        .catch((error) => {
+                            console.error('Error fetching user info', error);
+                        });
+                    }
+                },
+                StoreActivities(){
+                    this.saveButton = "Ukládám...";
+                    this.DelOldAct();
+                    this.RegNewAct();
+                    this.saveButton = "Uloženo!";
+                    setTimeout(() => {
+                        this.saveButton = "Uložit"
+                    }, 3000);
+                }
+            },
+            updated(){
+                this.CheckChecked();
+            }
+        })
+
+        // side bar component
+        app.component('check', {
+            template:`
+            <input 
+            type="checkbox" 
+            v-model="isChecked"
+            />
+            `,
+            props: ['label', 'modelValue'],
+            computed: {
+                isChecked: {
+                    get(){
+                        return this.modelValue
+                    },
+                    set(value){
+                        this.$emit('update:modelValue', value)
+                    }
+                }
+            }
+        })
+
+        app.mount('#app')
+    </script>
+
+</body>
+</html>

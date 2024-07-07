@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<!-- 
+    @author xvorob02
+-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Přihlášení</title>
+    <link rel="stylesheet" href="main.css">
+</head>
+<body id="anot" v-cloak>
+    <button class="login-button" v-if="showLoginButtons">
+        <a href="index.html">Přihlásit se</a>
+    </button>
+    <div class="table-container">
+        <h3>1. Ročník</h3>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th width="100">Zkratka</th>
+                    <th width="270">Název</th>
+                    <th width="5">Kr.</th>
+                    <th width="60">Sem.</th>
+                    <th width="70">Fak.</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="subject in subjects1" :key="subject.zkratka" @click="goToClassDetails(subject.zkratka)" class="clickable-row">
+                    <td >{{ subject.zkratka }}</td>
+                    <td>{{ subject.nazev }}</td>
+                    <td>{{ subject.kredity }}</td>
+                    <td>{{ subject.semestr }}</td>
+                    <td>{{ subject.fakulta }}</td>
+                </tr>
+            </tbody>
+        </table>
+        <h3>2. Ročník</h3>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th width="100">Zkratka</th>
+                    <th width="270">Název</th>
+                    <th width="5">Kr.</th>
+                    <th width="60">Sem.</th>
+                    <th width="70">Fak.</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="subject in subjects2" :key="subject.zkratka" @click="goToClassDetails(subject.zkratka)">
+                    <td>{{ subject.zkratka }}</td>
+                    <td>{{ subject.nazev }}</td>
+                    <td>{{ subject.kredity }}</td>
+                    <td>{{ subject.semestr }}</td>
+                    <td>{{ subject.fakulta }}</td>
+                </tr>
+            </tbody>
+        </table>
+        <h3>3. Ročník</h3>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th width="100">Zkratka</th>
+                    <th width="270">Název</th>
+                    <th width="5">Kr.</th>
+                    <th width="60">Sem.</th>
+                    <th width="70">Fak.</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="subject in subjects3" :key="subject.zkratka" @click="goToClassDetails(subject.zkratka)">
+                    <td>{{ subject.zkratka }}</td>
+                    <td>{{ subject.nazev }}</td>
+                    <td>{{ subject.kredity }}</td>
+                    <td>{{ subject.semestr }}</td>
+                    <td>{{ subject.fakulta }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script>
+        let anot = Vue.createApp({
+            data: function() {
+                return {
+                    showLoginButtons: false,
+                    subjects1: [],
+                    subjects2: [],
+                    subjects3: []
+                };
+            },
+            methods: {
+                loadSubjects() {
+                    const postData = new URLSearchParams();
+                    postData.append('request', 'getAllClasses');
+                    fetch('be.php', {
+                        method: 'POST',
+                        body: postData,
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                    })
+                        .then((response) => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok');
+                            }
+                            return response.json();
+                        })
+                        .then((resp) => {
+                            console.log(resp)
+                            if(resp.resCode === '0') {
+                                this.subjects1 = resp.data1
+                                this.subjects2 = resp.data2
+                                this.subjects3 = resp.data3
+                                if (resp.session === '1') this.showLoginButtons = false;
+                                else this.showLoginButtons = true;
+                            } else {
+                                console.error('Error fetching subjects!');
+                            }
+                        })
+                        .catch((error, resp) => {
+                            console.error('Error fetching subjects', error.message);
+                        });
+                },
+                goToClassDetails(zkratka) {
+                    console.log(zkratka)
+                    window.location.href = `class-details.html?zkratka=${zkratka}`;
+                },
+            },
+            mounted() {
+                this.loadSubjects();
+            },
+        }).mount('#anot')
+    </script>
+</body>
+</html>

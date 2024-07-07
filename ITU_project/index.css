@@ -1,0 +1,96 @@
+/**
+ * @author xkanko01
+ * @author xvorob02
+ * @author xbabus01
+ */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #E0E2EE; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-size: 100%;
+}
+
+.login{
+    display: flex;
+    flex-direction: column;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+}
+
+label {
+    display: flex;
+    font-weight: bold;
+    margin-top: 3px;
+}
+
+input {
+    padding: 10px;
+    margin: 5px 0;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+input::placeholder {
+    color: #ccc;
+}
+
+.log-in button {
+    font-size: 20px;
+    font-weight: bold;
+    background-color: #3D6D79;
+    color: #fff;
+    padding: 20px;
+    border: none;
+    border-radius: 20px;
+    margin-top: 10px;
+    cursor: pointer;
+    width: 200px;
+    margin-left: 15%;
+}
+
+.guest button {
+    background-color: #3D6D79;
+    color: #fff;
+    padding: 10px;
+    border: none;
+    border-radius: 50px;
+    margin-top: 10px;
+    cursor: pointer;
+    width: 200px;
+    margin-left: 15%;
+}
+
+p {
+    margin-top: 3px;
+    margin-bottom: 3px;
+    color: orange;
+}
+
+
+.remember-me {
+    display: flex;
+    align-items: center;
+    margin-top: 5px;
+}
+
+.remember-me input {
+    margin-right: 5px;
+}
+
+.remember-me label {
+    font-size: 14px;
+    font-weight: normal;
+}
+
+.error-message {
+    color: red;
+    margin-top: 10px;
+    size: 5px;
+}
